@@ -58,10 +58,12 @@ def get_list_functions():
         list_functions.append(i)
     return list_functions
 
-def get_prompt():
+def user_prompts(prompt_index):
     prompts = read_prompt("data/input/function_calling_tests.json")
-    prompt = prompts[0].prompt
-    print(prompt)
+    return prompts[prompt_index].prompt
+
+
+def prompt_builded(prompt):
     list_functions = read_data("data/input/functions_definition.json")
     my_prompt = (
     "You are a function-calling assistant. Match the User Request to the best Function Name.\n"
@@ -95,11 +97,7 @@ def get_prompt():
 )
     return my_prompt
 
-def build_prompt(function_name):
-    function = read_data("data/input/functions_definition.json")
-    prompts = read_prompt("data/input/function_calling_tests.json")
-    prompt = prompts[0].prompt
-
+def build_prompt(all_functions, function_name, prompt):
     return (
         "<|im_start|>system\n"
         "You are a smart parameter extraction engine.\n"
@@ -107,7 +105,7 @@ def build_prompt(function_name):
         "Infer the parameters from the request.\n\n"
 
         f"Function: {function_name}\n"
-        f"parameters: {function[function_name].parameters}\n\n"
+        f"parameters: {all_functions[function_name].parameters}\n\n"
         "Rules:\n"
         "- Return ONLY valid JSON.\n"
         "- Format:\n"
@@ -121,6 +119,10 @@ def build_prompt(function_name):
         "Function: fn_add_numbers\n"
         "User: what is the sum of 2 and 4\n"
         'Assistant: { "name": "fn_add_numbers", "parameters": {"a": 2.0, "b": 4.0} }\n\n'
+
+        "Function: fn_greet\n"
+        "User: Greet shrek\n"
+        'Assistant: { "name": "fn_greet", "parameters": {"name": Greet shrek} }\n\n'
 
         "Function: fn_reverse_string\n"
         "User: reverse hello\n"
