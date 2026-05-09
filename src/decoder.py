@@ -97,13 +97,13 @@ class BuildJson:
         elif state == "N_LAST_VALUES":
             current_state = self.llm.encode("0123456789}").squeeze().tolist()
         elif state == "S_VALUES":
-            print("1")
-            exit(1)
             current_state = self.llm.encode(f'{prompt}",').squeeze().tolist()
         elif state == "S_LAST_VALUES":
-            print("2")
-            exit(1)
-            current_state = self.llm.encode(f"{prompt}'}}").squeeze().tolist()
+            current_state = self.llm.encode(f'{prompt}').squeeze().tolist()
+            x = self.llm.encode('"').squeeze().tolist()
+            current_state.append(x)
+            x = self.llm.encode('"}').squeeze().tolist()
+            current_state.append(x)
         if not isinstance(current_state, list):
             my_state.append(current_state)
             return my_state
@@ -191,7 +191,7 @@ class BuildJson:
                             pos_char = ','
                             state_list = self.__get_state("S_VALUES", self.prompt)
                             if final_param == parameters_count - 1:
-                                state_list = self.__get_state("S_LAST_VALUES", text)
+                                state_list = self.__get_state("S_LAST_VALUES", self.prompt)
                                 pos_char = '}'
                             for values in range(len(logits)):
                                 if values not in state_list:
@@ -202,7 +202,20 @@ class BuildJson:
                             d = f"{c}"
                             text += d
                             print(c, end="", flush=True)
-                            if pos_char in d :
+                            if '"}' in d or ',' in d or '}' in d:
+                                if '"' not in d:
+                                    d += '"'
+                                    text += '"'
+                                    print(d, end="", flush=True)
+                                if final_param == parameters_count - 1:
+                                    if '}' not in d:
+                                        d += '}'
+                                        text += '}'
+                                        print(d, end="", flush=True)
+                                    elif ',' not in d:
+                                        d += ','
+                                        text += ','
+                                        print(d, end="", flush=True)
                                 break
 
                     final_param += 1
