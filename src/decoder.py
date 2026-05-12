@@ -132,6 +132,7 @@ class BuildJson:
                     c = self.llm.decode(id)
                     input_ids.append(id)
                     text += f"{c}"
+                    print(f"{c}", end="", flush=True)
 
 
             else:
@@ -140,7 +141,6 @@ class BuildJson:
                 final_param = 0
                 # len_param
                 for p in param:
-                    quate = 0
                     parametr_id = self.llm.encode(p).squeeze().tolist()
                     for v in range(len(parametr_id)):
                         logits = self.llm.get_logits_from_input_ids(parametr_id)
@@ -151,6 +151,7 @@ class BuildJson:
                         c = self.llm.decode(id)
                         input_ids.append(id)
                         text += f"{c}"
+                        print(f"{c}", end="", flush=True)
 
                     add_quote = True
                     while True:
@@ -172,13 +173,16 @@ class BuildJson:
                             c = self.llm.decode(id)
                             input_ids.append(id)
                             d = f"{c}"
-                            text += f"{c}"
                             if pos_char in d :
                                 float_numbers = self.llm.encode('.0').squeeze().tolist()
                                 decimal_point = self.llm.decode(float_numbers)
                                 input_ids.append(float_numbers)
                                 text += f"{decimal_point}"
+                                text += f"{c}"
+                                print(f"{c}", end="", flush=True)
                                 break
+                            text += f"{c}"
+                            print(f"{c}", end="", flush=True)
 
 
 
@@ -187,6 +191,7 @@ class BuildJson:
                             if add_quote:
                                 ids = self.llm.encode('"').squeeze().tolist()
                                 c = self.llm.decode(ids)
+                                print(f"{c}", end="", flush=True)
                                 text += f"{c}"
                                 add_quote = False
                                 input_ids.append(ids)
@@ -203,6 +208,7 @@ class BuildJson:
                             id = np.argmax(logits)
                             c = self.llm.decode(id)
                             d = f"{c}"
+                            print(f"{c}", end="", flush=True)
                             text += d
                             input_ids.append(id)
                             if '"' in d :
@@ -210,12 +216,14 @@ class BuildJson:
                                     ids = self.llm.encode('}').squeeze().tolist()
                                     c = self.llm.decode(ids)
                                     d = f"{c}"
+                                    print(f"{c}", end="", flush=True)
                                     text += d
                                     input_ids.append(ids)
                                 else:
                                     if d[-1] != ',':
                                         ids = self.llm.encode(',').squeeze().tolist()
                                         c = self.llm.decode(ids)
+                                        print(f"{c}", end="", flush=True)
                                         d = f"{c}"
                                         text += d
                                         input_ids.append(ids)
@@ -233,6 +241,7 @@ class BuildJson:
                         if values != close_parametrs:
                             log[values] = float("-inf")
                     c = self.llm.decode(np.argmax(log))
+                    print(f"{c}", end="", flush=True)
                     text += f"{c}"
 
                 break

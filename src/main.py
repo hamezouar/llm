@@ -28,6 +28,6 @@ while True:
     if i == prompt_count - 1:
         break
     i += 1
-    print(f"{text}\n\n\n")
+    print("\n\n\n")
 
 
