@@ -61,13 +61,13 @@ class FunctionCaller:
 
 
 class BuildJson:
-    def __init__(self, llm, prompt, function_caller, all_functions, prompt_builded, prompt_string):
+    def __init__(self, llm, prompt, function_caller, all_functions, prompt_builded, index_function):
         self.llm = llm
         self.prompt = prompt
         self.function_caller = function_caller
         self.all_functions = all_functions
         self.prompt_builded = prompt_builded
-        self.prompt_string = prompt_string
+        self.index_function = index_function
     
     def __get_state(self,state, prompt):
 
@@ -108,19 +108,18 @@ class BuildJson:
     def __function_parameters(self):
 
         param = []
-        for k in self.all_functions[self.function_caller].parameters.keys():
-            c = f' "{k}": '
+        for k in self.all_functions[self.index_function].parameters.keys():
+            c = f'"{k}": '
             param.append(c)
         return param
     
     def get_json_format(self):
         json_map = ["START","COTES", "PROMPT", "CLOSE_PROMPT", "PROMPT_VALUE", "NAME", "FUNCTION_NAME","PARAM", "OPEN_PARAM"]
-        prompt_builded = build_prompt(self.all_functions, self.function_caller, self.prompt)
         input_ids = self.llm.encode(self.prompt_builded).squeeze().tolist()
         state = "START"
         text = ""
         stored = ""
-        for i in range(400):
+        for i in range(1000):
             if state != "OPEN_PARAM":
                 state = json_map[i]
                 current_state =  self.__get_state(state, self.prompt)
@@ -131,7 +130,6 @@ class BuildJson:
                             logits[x] = float("-inf")
                     id = np.argmax(logits)
                     c = self.llm.decode(id)
-                    print(c, end="", flush=True)
                     input_ids.append(id)
                     text += f"{c}"
 
@@ -144,7 +142,6 @@ class BuildJson:
                 for p in param:
                     quate = 0
                     parametr_id = self.llm.encode(p).squeeze().tolist()
-                    # current_id
                     for v in range(len(parametr_id)):
                         logits = self.llm.get_logits_from_input_ids(parametr_id)
                         for x in range(len(logits)):
@@ -152,7 +149,6 @@ class BuildJson:
                                 logits[x] = float("-inf")
                         id = np.argmax(logits)
                         c = self.llm.decode(id)
-                        print(c, end="", flush=True)
                         input_ids.append(id)
                         text += f"{c}"
 
@@ -161,7 +157,7 @@ class BuildJson:
                         current_state =  self.__get_state("ALL_JSON", text)
                         logits = self.llm.get_logits_from_input_ids(current_state)
                         par_name = p.replace('"', "").replace(':', "").replace(' ', '')
-                        if self.all_functions[self.function_caller].parameters[par_name].type == "number":
+                        if self.all_functions[self.index_function].parameters[par_name].type == "number":
                             if final_param == parameters_count - 1:
                                 state_list = self.__get_state("N_LAST_VALUES", text)
                                 pos_char = '}'
@@ -181,10 +177,8 @@ class BuildJson:
                                 float_numbers = self.llm.encode('.0').squeeze().tolist()
                                 decimal_point = self.llm.decode(float_numbers)
                                 input_ids.append(float_numbers)
-                                print( decimal_point, end="", flush=True)
-                                print(c, end="", flush=True)
+                                text += f"{decimal_point}"
                                 break
-                            print(c, end="", flush=True)
 
 
 
@@ -194,7 +188,6 @@ class BuildJson:
                                 ids = self.llm.encode('"').squeeze().tolist()
                                 c = self.llm.decode(ids)
                                 text += f"{c}"
-                                print(c, end="", flush=True)
                                 add_quote = False
                                 input_ids.append(ids)
 
@@ -211,7 +204,6 @@ class BuildJson:
                             c = self.llm.decode(id)
                             d = f"{c}"
                             text += d
-                            print(c, end="", flush=True)
                             input_ids.append(id)
                             if '"' in d :
                                 if final_param == parameters_count - 1 and d[-1] != '}':
@@ -219,7 +211,6 @@ class BuildJson:
                                     c = self.llm.decode(ids)
                                     d = f"{c}"
                                     text += d
-                                    print(c, end="", flush=True)
                                     input_ids.append(ids)
                                 else:
                                     if d[-1] != ',':
@@ -227,7 +218,6 @@ class BuildJson:
                                         c = self.llm.decode(ids)
                                         d = f"{c}"
                                         text += d
-                                        print(c, end="", flush=True)
                                         input_ids.append(ids)
                                 break
 
@@ -236,7 +226,6 @@ class BuildJson:
 
                     final_param += 1
                 if final_param == parameters_count:
-                    """add } in parametrs """
                     ids = self.llm.encode(' } ').squeeze().tolist()
                     close_parametrs = self.llm.encode('}').squeeze().tolist()
                     log = self.llm.get_logits_from_input_ids(ids)
@@ -245,7 +234,6 @@ class BuildJson:
                             log[values] = float("-inf")
                     c = self.llm.decode(np.argmax(log))
                     text += f"{c}"
-                    print(c, end="", flush=True)
 
                 break
         return text

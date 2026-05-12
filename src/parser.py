@@ -17,10 +17,12 @@ def read_data(path: str) -> dict[str, FunctionDefinition]:
 
     my_objects: dict[str, FunctionDefinition] = {}
     try:
+        index = 0
         for obj in data:
-            obj_name = obj["name"]
+            obj_name = index
             new_object = FunctionDefinition(**obj)
             my_objects[obj_name] = new_object
+            index += 1
     except (ValidationError, KeyError) as e:
         if isinstance(e, KeyError):
             print(f"ERROR: Validation failed {e}")
@@ -30,6 +32,14 @@ def read_data(path: str) -> dict[str, FunctionDefinition]:
         return {}
 
     return my_objects
+
+def create_function_string(all_functions, function_count):
+    string = ""
+    i = 0
+    while i < function_count:
+        string += f"{i}. {all_functions[i].name}: {all_functions[i].description}\n"
+        i += 1
+    return string
 
 def read_prompt(path : str) -> list[Prompt]:
     try:
@@ -52,30 +62,49 @@ def read_prompt(path : str) -> list[Prompt]:
         return []
     return my_prompts
 
-def get_list_functions():
-    function_name = read_data("data/input/functions_definition.json")
+def get_list_functions(all_functions, len_function):
     list_functions = []
-    for i in function_name:
-        list_functions.append(i)
+    index = 0
+    while index < len_function:
+        list_functions.append(all_functions[index].name)
+        index += 1
     return list_functions
 
-def user_prompts(prompt_index):
-    prompts = read_prompt("data/input/function_calling_tests.json")
+
+def index_of_function(all_functions, function_name):
+    index = 0
+    for name in all_functions:
+        if name == function_name:
+            return index
+        index += 1
+    return index
+def user_prompts(prompt_index, path):
+    prompts = read_prompt(path)
     return prompts[prompt_index].prompt
 
 
-def prompt_builded(prompt):
-    list_functions = read_data("data/input/functions_definition.json")
+# i used this prompt to count prompt count and functions count
+def prompt_counted(path):
+    try:
+        with open(path, "r") as file:
+            data = json.load(file)
+        if not isinstance(data, list):
+            raise ValueError("Please check your prompt syntax")
+    except( FileNotFoundError, ValueError) as e:
+        return len(data)
+    
+    return len(data)
+
+
+# i used this prompt to find function name
+def prompt_builded(prompt, path, join_functions):
+    list_functions = read_data(path)
     my_prompt = (
     "You are a function-calling assistant. Match the User Request to the best Function Name.\n"
     "Return ONLY the function name. No explanation.\n\n"
     
     "Available Functions:\n"
-    f"1. {list_functions['fn_add_numbers'].name}: {list_functions['fn_add_numbers'].description}\n"
-    f"2. {list_functions['fn_greet'].name}: {list_functions['fn_greet'].description}\n"
-    f"3. {list_functions['fn_reverse_string'].name}: {list_functions['fn_reverse_string'].description}\n"
-    f"4. {list_functions['fn_get_square_root'].name}: {list_functions['fn_get_square_root'].description}\n"
-    f"5. {list_functions['fn_substitute_string_with_regex'].name}: {list_functions['fn_substitute_string_with_regex'].description}\n"
+    f"{join_functions}"
 
     "Examples:\n"
     "Input: Hello, can you greet me?\n"
@@ -98,15 +127,17 @@ def prompt_builded(prompt):
 )
     return my_prompt
 
-def build_prompt(all_functions, function_name, prompt):
+
+# i used this prompt to build json format
+def build_prompt(all_functions, index, prompt):
     return (
         "<|im_start|>system\n"
         "You are a smart parameter extraction engine.\n"
         "You are given a function name and a user request.\n"
         "Infer the parameters from the request.\n\n"
 
-        f"Function: {function_name}\n"
-        f"parameters: {all_functions[function_name].parameters}\n\n"
+        f"Function: {all_functions[index].name}\n"
+        f"parameters: {all_functions[index].parameters}\n\n"
         "Rules:\n"
         "- Return ONLY valid JSON.\n"
         "- Format:\n"
@@ -135,39 +166,5 @@ def build_prompt(all_functions, function_name, prompt):
         f"{prompt}\n"
         "<|im_end|>\n"
 
-        "<|im_start|>assistant\n"
-    )
-
-def string_prompt_optimized(all_functions, function_name, prompt):
-    return (
-        "<|im_start|>system\n"
-        "You are a specialized parameter extraction engine.\n"
-        "Your ONLY task is to extract exact string values from the user request based on the function definition.\n\n"
-        
-        f"TARGET_FUNCTION: {function_name}\n"
-        f"PARAMETERS_SCHEMA: {all_functions[function_name].parameters}\n\n"
-        
-        "STRICT_RULES:\n"
-        "1. Extract the string value EXACTLY as it appears in the user request.\n"
-        "2. Do NOT repeat the prompt, do NOT repeat the parameter name inside the value.\n"
-        "3. For string parameters, provide only the core value (e.g., if the user says 'Reverse hello', the value is 'hello').\n"
-        "4. Output format must be STRICT JSON.\n"
-        "5. Numbers must always be floats (e.g., 5.0).\n\n"
-
-        "EXTRACTION_EXAMPLES:\n"
-        "User: Greet john\n"
-        'Assistant: { "name": "fn_greet", "parameters": { "name": "john" } }\n\n'
-        
-        "User: Reverse the string 'world'\n"
-        'Assistant: { "name": "fn_reverse_string", "parameters": { "s": "world" } }\n\n'
-        
-        "User: Replace 'apple' with 'orange' in 'I like apple'\n"
-        'Assistant: { "name": "fn_substitute", "parameters": { "source": "I like apple", "regex": "apple", "replacement": "orange" } }\n\n'
-
-        "<|im_end|>\n"
-        "<|im_start|>user\n"
-        f"Function: {function_name}\n"
-        f"User Request: {prompt}\n"
-        "<|im_end|>\n"
         "<|im_start|>assistant\n"
     )
