@@ -7,6 +7,7 @@ def read_data(path: str) -> dict[str, FunctionDefinition]:
     try:
         with open(path, "r") as file:
             data = json.load(file)
+            
     except FileNotFoundError:
         print("ERROR: File not found")
         return {}
@@ -122,11 +123,11 @@ def build_prompt(all_functions, function_name, prompt):
 
         "Function: fn_greet\n"
         "User: Greet shrek\n"
-        'Assistant: { "name": "fn_greet", "parameters": {"name": Greet shrek} }\n\n'
+        'Assistant: { "name": "fn_greet", "parameters": {"name": shrek} }\n\n'
 
         "Function: fn_reverse_string\n"
         "User: reverse hello\n"
-        'Assistant: {"prompt": "Reverse the string '"hello"', "name": "fn_reverse_string", "parameters": {"s": "hello"} }\n\n'
+        'Assistant: {"prompt": "Reverse the string hello", "name": "fn_reverse_string", "parameters": {"s": "hello"} }\n\n'
 
         "<|im_end|>\n"
 
@@ -134,5 +135,39 @@ def build_prompt(all_functions, function_name, prompt):
         f"{prompt}\n"
         "<|im_end|>\n"
 
+        "<|im_start|>assistant\n"
+    )
+
+def string_prompt_optimized(all_functions, function_name, prompt):
+    return (
+        "<|im_start|>system\n"
+        "You are a specialized parameter extraction engine.\n"
+        "Your ONLY task is to extract exact string values from the user request based on the function definition.\n\n"
+        
+        f"TARGET_FUNCTION: {function_name}\n"
+        f"PARAMETERS_SCHEMA: {all_functions[function_name].parameters}\n\n"
+        
+        "STRICT_RULES:\n"
+        "1. Extract the string value EXACTLY as it appears in the user request.\n"
+        "2. Do NOT repeat the prompt, do NOT repeat the parameter name inside the value.\n"
+        "3. For string parameters, provide only the core value (e.g., if the user says 'Reverse hello', the value is 'hello').\n"
+        "4. Output format must be STRICT JSON.\n"
+        "5. Numbers must always be floats (e.g., 5.0).\n\n"
+
+        "EXTRACTION_EXAMPLES:\n"
+        "User: Greet john\n"
+        'Assistant: { "name": "fn_greet", "parameters": { "name": "john" } }\n\n'
+        
+        "User: Reverse the string 'world'\n"
+        'Assistant: { "name": "fn_reverse_string", "parameters": { "s": "world" } }\n\n'
+        
+        "User: Replace 'apple' with 'orange' in 'I like apple'\n"
+        'Assistant: { "name": "fn_substitute", "parameters": { "source": "I like apple", "regex": "apple", "replacement": "orange" } }\n\n'
+
+        "<|im_end|>\n"
+        "<|im_start|>user\n"
+        f"Function: {function_name}\n"
+        f"User Request: {prompt}\n"
+        "<|im_end|>\n"
         "<|im_start|>assistant\n"
     )
