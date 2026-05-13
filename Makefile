@@ -19,8 +19,7 @@ debug:
 
 # Clean caches
 clean:
-	@rm -rf __pycache__ .mypy_cache .pytest_cache  */__pycache__  mazegen/.mypy_cache mazegen/.pytest_cache
-	
+	@rm -rf __pycache__ .mypy_cache .pytest_cache  */__pycache__  llm_sdk/llm_sdk/*cache*
 
 
 # Lint (standard)

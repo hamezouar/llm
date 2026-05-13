@@ -94,9 +94,9 @@ class BuildJson:
         elif state == "ALL_JSON":
                 current_state = self.llm.encode(prompt).squeeze().tolist()
         elif state == "N_VALUES":
-            current_state = self.llm.encode("0123456789,").squeeze().tolist()
+            current_state = self.llm.encode(".0123456789").squeeze().tolist()
         elif state == "N_LAST_VALUES":
-            current_state = self.llm.encode("0123456789}").squeeze().tolist()
+            current_state = self.llm.encode(".0123456789").squeeze().tolist()
         elif state == "S_LAST_VALUES":
             current_state = self.llm.encode(prompt).squeeze().tolist()
         if not isinstance(current_state, list):
@@ -154,6 +154,7 @@ class BuildJson:
                         print(f"{c}", end="", flush=True)
 
                     add_quote = True
+                    param_text = ""
                     while True:
                         current_state =  self.__get_state("ALL_JSON", text)
                         logits = self.llm.get_logits_from_input_ids(current_state)
@@ -161,10 +162,10 @@ class BuildJson:
                         if self.all_functions[self.index_function].parameters[par_name].type == "number":
                             if final_param == parameters_count - 1:
                                 state_list = self.__get_state("N_LAST_VALUES", text)
-                                pos_char = '}'
+                                pos_char = '} '
                             else:
                                 state_list = self.__get_state("N_VALUES", text)
-                                pos_char = ','
+                                pos_char = ', '
 
                             for values in range(len(logits)):
                                 if values not in state_list:
@@ -173,14 +174,23 @@ class BuildJson:
                             c = self.llm.decode(id)
                             input_ids.append(id)
                             d = f"{c}"
-                            if pos_char in d :
-                                float_numbers = self.llm.encode('.0').squeeze().tolist()
-                                decimal_point = self.llm.decode(float_numbers)
-                                input_ids.append(float_numbers)
-                                text += f"{decimal_point}"
+                            param_text += d
+                            if pos_char in d or ".0" in param_text :
+                                if '.0' not in param_text:
+                                    float_numbers = self.llm.encode('.0').squeeze().tolist()
+                                    decimal_point = self.llm.decode(float_numbers)
+                                    input_ids.append(float_numbers)
+                                    text += f"{decimal_point}"
+                                    print(decimal_point, end="", flush=True)
                                 text += f"{c}"
                                 print(f"{c}", end="", flush=True)
+                                if not pos_char in param_text[-1]:
+                                    close_param = self.llm.encode(pos_char).squeeze().tolist()
+                                    print_param = self.llm.decode(close_param)
+                                    text += f"{print_param}"
+                                    print(print_param, end="", flush=True)
                                 break
+
                             text += f"{c}"
                             print(f"{c}", end="", flush=True)
 
@@ -213,7 +223,7 @@ class BuildJson:
                             input_ids.append(id)
                             if '"' in d :
                                 if final_param == parameters_count - 1 and d[-1] != '}':
-                                    ids = self.llm.encode('}').squeeze().tolist()
+                                    ids = self.llm.encode('} ').squeeze().tolist()
                                     c = self.llm.decode(ids)
                                     d = f"{c}"
                                     print(f"{c}", end="", flush=True)
@@ -221,7 +231,7 @@ class BuildJson:
                                     input_ids.append(ids)
                                 else:
                                     if d[-1] != ',':
-                                        ids = self.llm.encode(',').squeeze().tolist()
+                                        ids = self.llm.encode(', ').squeeze().tolist()
                                         c = self.llm.decode(ids)
                                         print(f"{c}", end="", flush=True)
                                         d = f"{c}"

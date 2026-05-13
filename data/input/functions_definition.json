@@ -57,7 +57,7 @@
       "source_string": {
         "type": "string"
       },
-      "regex": {
+      "hamza": {
         "type": "string"
       },
       "replacement": {
@@ -68,5 +68,4 @@
       "type": "string"
     }
   }
-  
 ]

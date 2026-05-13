@@ -29,9 +29,10 @@ def read_data(path: str) -> dict[str, FunctionDefinition]:
         else:
             for error in e.errors():
                 print(f"- {error['msg']}")
-        return {}
+        exit(1)
 
     return my_objects
+
 
 def create_function_string(all_functions, function_count):
     string = ""
@@ -49,7 +50,7 @@ def read_prompt(path : str) -> list[Prompt]:
             raise ValueError("Please check your prompt syntax")
     except( FileNotFoundError, ValueError) as e:
         print(f"ERROR: {e}")
-        return []
+        exit(1)
     my_prompts: list[Prompt] = []
     try:
         for p in data:
@@ -59,7 +60,7 @@ def read_prompt(path : str) -> list[Prompt]:
         print("ERROR: Validation failed")
         for error in e.errors():
             print(f"- {error['msg']}")
-        return []
+        exit(1)
     return my_prompts
 
 def get_list_functions(all_functions, len_function):
@@ -91,7 +92,8 @@ def prompt_counted(path):
         if not isinstance(data, list):
             raise ValueError("Please check your prompt syntax")
     except( FileNotFoundError, ValueError) as e:
-        return len(data)
+        print(e)
+        exit(1)
     
     return len(data)
 
@@ -152,6 +154,11 @@ def build_prompt(all_functions, index, prompt):
         "User: what is the sum of 2 and 4\n"
         'Assistant: { "name": "fn_add_numbers", "parameters": {"a": 2.0, "b": 4.0} }\n\n'
 
+        "Function: fn_get_square_root\n"
+        "User: Calculate the square root of 144\n"
+        'Assistant: { "name": "fn_get_square_root", "parameters": {"a": 144.0} }\n\n'
+
+
         "Function: fn_greet\n"
         "User: Greet shrek\n"
         'Assistant: { "name": "fn_greet", "parameters": {"name": shrek} }\n\n'
@@ -168,3 +175,4 @@ def build_prompt(all_functions, index, prompt):
 
         "<|im_start|>assistant\n"
     )
+
