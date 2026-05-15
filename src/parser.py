@@ -28,7 +28,7 @@ def read_data(path: str) -> dict[str, FunctionDefinition]:
             print(f"ERROR: Validation failed {e}")
         else:
             for error in e.errors():
-                print(f"- {error['msg']}")
+                print(f"-You are {error['type']} {error['loc']} {error['msg']}")
         exit(1)
 
     return my_objects
@@ -47,7 +47,7 @@ def read_prompt(path : str) -> list[Prompt]:
         with open(path, "r") as file:
             data = json.load(file)
         if not isinstance(data, list):
-            raise ValueError("Please check your prompt syntax")
+            raise ValueError(f"Please check your data syntax in this path {path}")
     except( FileNotFoundError, ValueError) as e:
         print(f"ERROR: {e}")
         exit(1)
@@ -90,7 +90,7 @@ def prompt_counted(path):
         with open(path, "r") as file:
             data = json.load(file)
         if not isinstance(data, list):
-            raise ValueError("Please check your prompt syntax")
+            raise ValueError(f"Please check your data syntax in this path {path}")
     except( FileNotFoundError, ValueError) as e:
         print(e)
         exit(1)

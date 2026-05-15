@@ -1,3 +1,5 @@
+import json
+
 import numpy as np
 from .parser import build_prompt
 
@@ -61,13 +63,14 @@ class FunctionCaller:
 
 
 class BuildJson:
-    def __init__(self, llm, prompt, function_caller, all_functions, prompt_builded, index_function):
+    def __init__(self, llm, prompt, function_caller, all_functions, prompt_builded, index_function, prompt_count):
         self.llm = llm
         self.prompt = prompt
         self.function_caller = function_caller
         self.all_functions = all_functions
         self.prompt_builded = prompt_builded
         self.index_function = index_function
+        self.prompt_count = prompt_count
     
     def __get_state(self,state, prompt):
 
@@ -112,17 +115,18 @@ class BuildJson:
             c = f'"{k}": '
             param.append(c)
         return param
-    
+    json_text = ""
     def get_json_format(self):
         json_map = ["START","COTES", "PROMPT", "CLOSE_PROMPT", "PROMPT_VALUE", "NAME", "FUNCTION_NAME","PARAM", "OPEN_PARAM"]
         input_ids = self.llm.encode(self.prompt_builded).squeeze().tolist()
         state = "START"
         text = ""
-        stored = ""
+        counter = 0
         for i in range(1000):
+            print("json")
             if state != "OPEN_PARAM":
                 state = json_map[i]
-                current_state =  self.__get_state(state, self.prompt)
+                current_state =  self.__get_state(state, self.prompt.replace('"', '\\"'))
                 for v in range(len(current_state)):
                     logits = self.llm.get_logits_from_input_ids(input_ids)
                     for x in range(len(logits)):
@@ -132,7 +136,6 @@ class BuildJson:
                     c = self.llm.decode(id)
                     input_ids.append(id)
                     text += f"{c}"
-                    print(f"{c}", end="", flush=True)
 
 
             else:
@@ -151,7 +154,6 @@ class BuildJson:
                         c = self.llm.decode(id)
                         input_ids.append(id)
                         text += f"{c}"
-                        print(f"{c}", end="", flush=True)
 
                     add_quote = True
                     param_text = ""
@@ -181,18 +183,14 @@ class BuildJson:
                                     decimal_point = self.llm.decode(float_numbers)
                                     input_ids.append(float_numbers)
                                     text += f"{decimal_point}"
-                                    print(decimal_point, end="", flush=True)
                                 text += f"{c}"
-                                print(f"{c}", end="", flush=True)
                                 if not pos_char in param_text[-1]:
                                     close_param = self.llm.encode(pos_char).squeeze().tolist()
                                     print_param = self.llm.decode(close_param)
                                     text += f"{print_param}"
-                                    print(print_param, end="", flush=True)
                                 break
 
                             text += f"{c}"
-                            print(f"{c}", end="", flush=True)
 
 
 
@@ -201,7 +199,6 @@ class BuildJson:
                             if add_quote:
                                 ids = self.llm.encode('"').squeeze().tolist()
                                 c = self.llm.decode(ids)
-                                print(f"{c}", end="", flush=True)
                                 text += f"{c}"
                                 add_quote = False
                                 input_ids.append(ids)
@@ -218,22 +215,20 @@ class BuildJson:
                             id = np.argmax(logits)
                             c = self.llm.decode(id)
                             d = f"{c}"
-                            print(f"{c}", end="", flush=True)
                             text += d
                             input_ids.append(id)
                             if '"' in d :
-                                if final_param == parameters_count - 1 and d[-1] != '}':
-                                    ids = self.llm.encode('} ').squeeze().tolist()
-                                    c = self.llm.decode(ids)
-                                    d = f"{c}"
-                                    print(f"{c}", end="", flush=True)
-                                    text += d
-                                    input_ids.append(ids)
+                                if final_param == parameters_count - 1:
+                                    if d[-1] != '}':
+                                        ids = self.llm.encode('} ').squeeze().tolist()
+                                        c = self.llm.decode(ids)
+                                        d = f"{c}"
+                                        text += d
+                                        input_ids.append(ids)
                                 else:
                                     if d[-1] != ',':
                                         ids = self.llm.encode(', ').squeeze().tolist()
                                         c = self.llm.decode(ids)
-                                        print(f"{c}", end="", flush=True)
                                         d = f"{c}"
                                         text += d
                                         input_ids.append(ids)
@@ -244,18 +239,19 @@ class BuildJson:
 
                     final_param += 1
                 if final_param == parameters_count:
-                    ids = self.llm.encode(' } ').squeeze().tolist()
-                    close_parametrs = self.llm.encode('}').squeeze().tolist()
-                    log = self.llm.get_logits_from_input_ids(ids)
-                    for values in range(len(log)):
-                        if values != close_parametrs:
-                            log[values] = float("-inf")
-                    c = self.llm.decode(np.argmax(log))
-                    print(f"{c}", end="", flush=True)
-                    text += f"{c}"
+                    text += "}"
+                    self.json_text += text
+                    obg = json.loads(text)
+                    print(json.dumps(obg, indent=2), end="", flush=True)
+                    if counter != self.prompt_count - 1:
+                        print(",\n")
+                    else:
+                        print('\n]')
+                    text = ""
+                    counter += 1
 
                 break
-        return text
+        return self.json_text
     
 
 

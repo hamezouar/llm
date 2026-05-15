@@ -1,6 +1,6 @@
 PYTHON = python3
 
-SCRIPT = -m src.main
+SCRIPT = -m src
 
 # Run main script
 run:
