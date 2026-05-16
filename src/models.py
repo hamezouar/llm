@@ -12,5 +12,6 @@ class FunctionDefinition(BaseModel):
     parameters: Dict[str, Parameter]
     returns: Parameter
 
+
 class Prompt(BaseModel):
     prompt: str

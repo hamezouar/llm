@@ -24,7 +24,7 @@ clean:
 
 # Lint (standard)
 lint:
-	@${PYTHON} -m flake8 ${PWD}
+	@${PYTHON} -m flake8 ${PWD} --exclude=llm_sdk/llm_sdk/__init__.py
 	@${PYTHON} -m mypy ${PWD} --warn-return-any \
 		--warn-unused-ignores \
 		--ignore-missing-imports \
