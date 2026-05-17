@@ -1,3 +1,5 @@
+from typing import List
+
 from llm_sdk import Small_LLM_Model
 import json
 import argparse
@@ -48,7 +50,7 @@ while True:
     counter += 1
 
 
-def write_in_file(output_list, path):
+def write_in_file(output_list: List[str], path: str) -> None:
 
     with open(path, 'w')as f:
         f.write("")

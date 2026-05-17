@@ -1,22 +1,25 @@
 import json
-
+from typing import Dict, List
+from llm_sdk import Small_LLM_Model
 import numpy as np
+from .models import FunctionDefinition
 
 
 class FunctionCaller:
 
-    def __init__(self, llm, list_functions):
+    def __init__(self, llm: Small_LLM_Model, list_functions: List[str]):
         self.llm = llm
         self.list_functions = list_functions
 
-    def __get_tokens(self):
+    def __get_tokens(self) -> Dict[str, List[int]]:
         tokens = {}
         for f in self.list_functions:
             id = self.llm.encode(f).squeeze().tolist()
             tokens[f] = id
         return tokens
 
-    def __allowed_tokens(self, generated, functions_tokens):
+    def __allowed_tokens(self, generated: List,
+                         functions_tokens: Dict[str, List[int]]) -> List:
 
         allowed = []
 
@@ -34,14 +37,15 @@ class FunctionCaller:
                         allowed.append(id)
             return allowed
 
-    def __finished(self, generate, functions_tokens):
+    def __finished(self, generate: List,
+                   functions_tokens: dict[str, list[int]]) -> bool:
         decoded = self.llm.decode(generate).strip()
         return decoded in functions_tokens
 
-    def functionfcaller(self, prompt):
+    def functionfcaller(self, prompt: str) -> str:
         input_ids = self.llm.encode(prompt).squeeze().tolist()
         fun_logits = self.__get_tokens()
-        generate = []
+        generate: List = []
 
         while True:
             logits = self.llm.get_logits_from_input_ids(input_ids)
@@ -60,13 +64,16 @@ class FunctionCaller:
 
             if self.__finished(generate, fun_logits):
                 break
-        return self.llm.decode(generate)
+        my_function: str = self.llm.decode(generate)
+        return my_function
 
 
 class BuildJson:
 
-    def __init__(self, llm, prompt, function_caller, all_functions,
-                 prompt_builded, index_function, prompt_count, counter):
+    def __init__(self, llm: Small_LLM_Model, prompt: str, function_caller: str,
+                 all_functions: Dict[int, FunctionDefinition],
+                 prompt_builded: str,
+                 index_function: int, prompt_count: int, counter: int):
         self.llm = llm
         self.prompt = prompt
         self.function_caller = function_caller
@@ -76,10 +83,9 @@ class BuildJson:
         self.prompt_count = prompt_count
         self.counter = counter
 
-    def __get_state(self, state, prompt):
+    def __get_state(self, state: str, prompt: str) -> List[int]:
 
-        my_state = []
-        current_state = ""
+        my_state: List = []
         if state == "START":
             current_state = self.llm.encode("{ ").squeeze().tolist()
         elif state == "COTES":
@@ -113,7 +119,7 @@ class BuildJson:
             return my_state
         return current_state
 
-    def __function_parameters(self):
+    def __function_parameters(self) -> List:
 
         param = []
         for k in self.all_functions[self.index_function].parameters.keys():
@@ -123,7 +129,7 @@ class BuildJson:
 
     json_text = ""
 
-    def get_json_format(self):
+    def get_json_format(self) -> str:
         json_map = [
             "START", "COTES", "PROMPT", "CLOSE_PROMPT", "PROMPT_VALUE", "NAME",
             "FUNCTION_NAME", "PARAM", "OPEN_PARAM"
@@ -142,7 +148,7 @@ class BuildJson:
                         if x != current_state[v]:
                             logits[x] = float("-inf")
                     id = np.argmax(logits)
-                    c = self.llm.decode(id)
+                    c = self.llm.decode([int(id)])
                     input_ids.append(id)
                     text += f"{c}"
 
@@ -160,7 +166,7 @@ class BuildJson:
                             if x != parametr_id[v]:
                                 logits[x] = float("-inf")
                         id = np.argmax(logits)
-                        c = self.llm.decode(id)
+                        c = self.llm.decode([int(id)])
                         input_ids.append(id)
                         text += f"{c}"
 
@@ -187,7 +193,7 @@ class BuildJson:
                                 if values not in state_list:
                                     logits[values] = float('-inf')
                             id = np.argmax(logits)
-                            c = self.llm.decode(id)
+                            c = self.llm.decode([int(id)])
                             input_ids.append(id)
                             d = f"{c}"
                             param_text += d
@@ -219,15 +225,16 @@ class BuildJson:
 
                             logits = self.llm.get_logits_from_input_ids(
                                 input_ids)
-                            x = self.llm.encode('"\n').squeeze().tolist()
                             forbidden_ids = []
-                            forbidden_ids.append(x)
+                            forbidden_ids = (
+                                self.llm.encode('"\n').squeeze().tolist()
+                                )
 
                             for for_id in forbidden_ids:
                                 logits[for_id] = float("-inf")
 
                             id = np.argmax(logits)
-                            c = self.llm.decode(id)
+                            c = self.llm.decode([int(id)])
                             d = f"{c}"
                             text += d
                             input_ids.append(id)

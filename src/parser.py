@@ -1,13 +1,14 @@
+from typing import Dict, List
+
 from .models import FunctionDefinition, Prompt
 import json
 from pydantic import ValidationError
 
 
-def read_data(path: str) -> dict[str, FunctionDefinition]:
+def read_data(path: str) -> Dict[int, FunctionDefinition]:
     try:
         with open(path, "r") as file:
             data = json.load(file)
-            
     except FileNotFoundError:
         print("ERROR: File not found")
         return {}
@@ -15,7 +16,7 @@ def read_data(path: str) -> dict[str, FunctionDefinition]:
         print("ERROR: Invalid JSON format")
         return {}
 
-    my_objects: dict[str, FunctionDefinition] = {}
+    my_objects: Dict[int, FunctionDefinition] = {}
     try:
         index = 0
         for obj in data:
@@ -28,30 +29,36 @@ def read_data(path: str) -> dict[str, FunctionDefinition]:
             print(f"ERROR: Validation failed {e}")
         else:
             for error in e.errors():
-                print(f"-You are {error['type']} {error['loc']} {error['msg']}")
+                print(f"-You are {error['type']}"
+                      f"{error['loc']} {error['msg']}")
         exit(1)
 
     return my_objects
 
 
-def create_function_string(all_functions, function_count):
+def create_function_string(all_functions:
+                           Dict[int, FunctionDefinition],
+                           function_count: int) -> str:
     string = ""
     i = 0
     while i < function_count:
-        string += f"{i}. {all_functions[i].name}: {all_functions[i].description}\n"
+        string += f"{i}. {all_functions[i].name}:"
+        f"{all_functions[i].description}\n"
         i += 1
     return string
 
-def read_prompt(path : str) -> list[Prompt]:
+
+def read_prompt(path: str) -> List[Prompt]:
     try:
         with open(path, "r") as file:
             data = json.load(file)
         if not isinstance(data, list):
-            raise ValueError(f"Please check your data syntax in this path {path}")
-    except( FileNotFoundError, ValueError) as e:
+            raise ValueError(f"Please check your"
+                             f" data syntax in this path {path}")
+    except (FileNotFoundError, ValueError) as e:
         print(f"ERROR: {e}")
         exit(1)
-    my_prompts: list[Prompt] = []
+    my_prompts: List[Prompt] = []
     try:
         for p in data:
             new_object = Prompt(**p)
@@ -63,7 +70,9 @@ def read_prompt(path : str) -> list[Prompt]:
         exit(1)
     return my_prompts
 
-def get_list_functions(all_functions, len_function):
+
+def get_list_functions(all_functions: Dict[int, FunctionDefinition],
+                       len_function: int) -> List[str]:
     list_functions = []
     index = 0
     while index < len_function:
@@ -72,65 +81,61 @@ def get_list_functions(all_functions, len_function):
     return list_functions
 
 
-def index_of_function(all_functions, function_name):
+def index_of_function(all_functions: List[str], function_name: str) -> int:
     index = 0
     for name in all_functions:
         if name == function_name:
             return index
         index += 1
     return index
-def user_prompts(prompt_index, path):
+
+
+def user_prompts(prompt_index: int, path: str) -> str:
     prompts = read_prompt(path)
     return prompts[prompt_index].prompt
 
 
 # i used this prompt to count prompt count and functions count
-def prompt_counted(path):
+def prompt_counted(path: str) -> int:
     try:
         with open(path, "r") as file:
             data = json.load(file)
         if not isinstance(data, list):
-            raise ValueError(f"Please check your data syntax in this path {path}")
-    except( FileNotFoundError, ValueError) as e:
+            raise ValueError(f"Please check your"
+                             f"data syntax in this path {path}")
+    except (FileNotFoundError, ValueError) as e:
         print(e)
         exit(1)
-    
     return len(data)
 
 
-# i used this prompt to find function name
-def prompt_builded(prompt, join_functions):
+def prompt_builded(prompt: str, join_functions: str) -> str:
     my_prompt = (
-    "You are a function-calling assistant. Match the User Request to the best Function Name.\n"
-    "Return ONLY the function name. No explanation.\n\n"
-    
-    "Available Functions:\n"
-    f"{join_functions}"
-
-    "Examples:\n"
-    "Input: Hello, can you greet me?\n"
-    "Output: fn_greet\n\n"
-    
-    "Input: What is the capital of France?\n"
-    "Output: non_seported\n\n"
-    
-    "Input: Calculate the sum of 10 and 20\n"
-    "Output: fn_add_numbers\n\n"
-    
-    "Input: Find the square root of 16\n"
-    "Output: fn_get_square_root\n\n"
-    
-    "Input: Reverse 'hello'\n"
-    "Output: fn_reverse_string\n"
-
-    f"User Request: {prompt}\n"
-    "Output: "
-)
+        "You are a function-calling assistant."
+        f"Match the User Request to the best Function Name.\n"
+        "Return ONLY the function name. No explanation.\n\n"
+        "Available Functions:\n"
+        f"{join_functions}"
+        "Examples:\n"
+        "Input: Hello, can you greet me?\n"
+        "Output: fn_greet\n\n"
+        "Input: What is the capital of France?\n"
+        "Output: non_seported\n\n"
+        "Input: Calculate the sum of 10 and 20\n"
+        "Output: fn_add_numbers\n\n"
+        "Input: Find the square root of 16\n"
+        "Output: fn_get_square_root\n\n"
+        "Input: Reverse 'hello'\n"
+        "Output: fn_reverse_string\n"
+        f"User Request: {prompt}\n"
+        "Output: "
+    )
     return my_prompt
 
 
 # i used this prompt to build json format
-def build_prompt(all_functions, index, prompt):
+def build_prompt(all_functions: Dict[int, FunctionDefinition],
+                 index: int, prompt: str) -> str:
     return (
         "<|im_start|>system\n"
         "You are a smart parameter extraction engine.\n"
@@ -146,16 +151,19 @@ def build_prompt(all_functions, index, prompt):
         "- Do NOT add explanation.\n"
         "- Infer parameter names logically.\n"
         "- Use meaningful parameter names based on the function name.\n\n"
-        "- All numeric values MUST be returned as floats, even if they are whole numbers (e.g., 2 -> 2.0). Never return integers."
+        "- All numeric values MUST be returned as floats, even "
+        "if they are whole numbers (e.g., 2 -> 2.0). Never return integers."
 
         "Examples:\n"
         "Function: fn_add_numbers\n"
         "User: what is the sum of 2 and 4\n"
-        'Assistant: { "name": "fn_add_numbers", "parameters": {"a": 2.0, "b": 4.0} }\n\n'
+        'Assistant: { "name": "fn_add_numbers", '
+        '"parameters": {"a": 2.0, "b": 4.0} }\n\n'
 
         "Function: fn_get_square_root\n"
         "User: Calculate the square root of 144\n"
-        'Assistant: { "name": "fn_get_square_root", "parameters": {"a": 144.0} }\n\n'
+        'Assistant: { "name": "fn_get_square_root",'
+        ' "parameters": {"a": 144.0} }\n\n'
 
 
         "Function: fn_greet\n"
@@ -164,7 +172,8 @@ def build_prompt(all_functions, index, prompt):
 
         "Function: fn_reverse_string\n"
         "User: reverse hello\n"
-        'Assistant: {"prompt": "Reverse the string hello", "name": "fn_reverse_string", "parameters": {"s": "hello"} }\n\n'
+        'Assistant: {"prompt": "Reverse the string hello",'
+        ' "name": "fn_reverse_string", "parameters": {"s": "hello"} }\n\n'
 
         "<|im_end|>\n"
 
@@ -174,4 +183,3 @@ def build_prompt(all_functions, index, prompt):
 
         "<|im_start|>assistant\n"
     )
-
