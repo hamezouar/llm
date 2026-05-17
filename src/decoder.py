@@ -226,9 +226,8 @@ class BuildJson:
                             logits = self.llm.get_logits_from_input_ids(
                                 input_ids)
                             forbidden_ids = []
-                            forbidden_ids = (
-                                self.llm.encode('"\n').squeeze().tolist()
-                                )
+                            x = self.llm.encode('"\n').squeeze().tolist()
+                            forbidden_ids.append(x)
 
                             for for_id in forbidden_ids:
                                 logits[for_id] = float("-inf")
