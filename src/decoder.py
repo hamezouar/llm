@@ -256,9 +256,10 @@ class BuildJson:
                     self.json_text += text
                     try:
                         obg = json.loads(text)
-                        print(json.dumps(obg, indent=2), end="", flush=True)
                         if self.counter == 0:
                             print('[')
+                        print(json.dumps(obg, indent=2), end="", flush=True)
+
                     except json.JSONDecodeError:
                         print(
                             f"We have error in json formatplease"
