@@ -12,7 +12,8 @@ from .parser import (create_function_string,
                      user_prompts,
                      build_prompt,
                      prompt_counted)
-
+import time
+start = time.perf_counter()
 input_file = 'data/input/function_calling_tests.json'
 functions_definition = 'data/input/functions_definition.json'
 output = 'data/output/function_calling_results.json'
@@ -67,3 +68,6 @@ def write_in_file(output_list: List[str], path: str) -> None:
 
 
 write_in_file(output_list, args.output)
+
+end = time.perf_counter()
+print(f"{end - start:.6f} seconds")

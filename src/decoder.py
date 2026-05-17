@@ -138,145 +138,120 @@ class BuildJson:
         state = "START"
         text = ""
         for i in range(1000):
-            if state != "OPEN_PARAM":
-                state = json_map[i]
-                current_state = self.__get_state(
-                    state, self.prompt.replace('"', '\\"'))
-                for v in range(len(current_state)):
-                    logits = self.llm.get_logits_from_input_ids(input_ids)
+            text += f'{{ "prompt": "{self.prompt}", "name": "{self.function_caller}", "parameters": {{ '
+            param = self.__function_parameters()
+            parameters_count = len(param)
+            final_param = 0
+            # len_param
+            for p in param:
+                parametr_id = self.llm.encode(p).squeeze().tolist()
+                for v in range(len(parametr_id)):
+                    logits = self.llm.get_logits_from_input_ids(
+                        parametr_id)
                     for x in range(len(logits)):
-                        if x != current_state[v]:
+                        if x != parametr_id[v]:
                             logits[x] = float("-inf")
                     id = np.argmax(logits)
                     c = self.llm.decode([int(id)])
                     input_ids.append(id)
                     text += f"{c}"
-
-            else:
-                param = self.__function_parameters()
-                parameters_count = len(param)
-                final_param = 0
-                # len_param
-                for p in param:
-                    parametr_id = self.llm.encode(p).squeeze().tolist()
-                    for v in range(len(parametr_id)):
-                        logits = self.llm.get_logits_from_input_ids(
-                            parametr_id)
-                        for x in range(len(logits)):
-                            if x != parametr_id[v]:
-                                logits[x] = float("-inf")
+                add_quote = True
+                param_text = ""
+                while True:
+                    current_state = self.__get_state("ALL_JSON", text)
+                    logits = self.llm.get_logits_from_input_ids(
+                        current_state)
+                    par_name = p.replace('"',
+                                         "").replace(':',
+                                                     "").replace(' ', '')
+                    if self.all_functions[self.index_function].parameters[
+                            par_name].type == "number":
+                        if final_param == parameters_count - 1:
+                            state_list = self.__get_state(
+                                "N_LAST_VALUES", text)
+                            pos_char = '} '
+                        else:
+                            state_list = self.__get_state("N_VALUES", text)
+                            pos_char = ', '
+                        for values in range(len(logits)):
+                            if values not in state_list:
+                                logits[values] = float('-inf')
                         id = np.argmax(logits)
                         c = self.llm.decode([int(id)])
                         input_ids.append(id)
-                        text += f"{c}"
-
-                    add_quote = True
-                    param_text = ""
-                    while True:
-                        current_state = self.__get_state("ALL_JSON", text)
-                        logits = self.llm.get_logits_from_input_ids(
-                            current_state)
-                        par_name = p.replace('"',
-                                             "").replace(':',
-                                                         "").replace(' ', '')
-                        if self.all_functions[self.index_function].parameters[
-                                par_name].type == "number":
-                            if final_param == parameters_count - 1:
-                                state_list = self.__get_state(
-                                    "N_LAST_VALUES", text)
-                                pos_char = '} '
-                            else:
-                                state_list = self.__get_state("N_VALUES", text)
-                                pos_char = ', '
-
-                            for values in range(len(logits)):
-                                if values not in state_list:
-                                    logits[values] = float('-inf')
-                            id = np.argmax(logits)
-                            c = self.llm.decode([int(id)])
-                            input_ids.append(id)
-                            d = f"{c}"
-                            param_text += d
-                            if pos_char in d or ".0" in param_text:
-                                if '.0' not in param_text:
-                                    float_numbers = self.llm.encode(
-                                        '.0').squeeze().tolist()
-                                    decimal_point = self.llm.decode(
-                                        float_numbers)
-                                    input_ids.append(float_numbers)
-                                    text += f"{decimal_point}"
-                                text += f"{c}"
-                                if pos_char not in param_text[-1]:
-                                    close_param = self.llm.encode(
-                                        pos_char).squeeze().tolist()
-                                    print_param = self.llm.decode(close_param)
-                                    text += f"{print_param}"
-                                break
-
+                        d = f"{c}"
+                        param_text += d
+                        if pos_char in d or ".0" in param_text:
+                            if '.0' not in param_text:
+                                float_numbers = self.llm.encode(
+                                    '.0').squeeze().tolist()
+                                decimal_point = self.llm.decode(
+                                    float_numbers)
+                                input_ids.append(float_numbers)
+                                text += f"{decimal_point}"
                             text += f"{c}"
-
-                        else:
-                            if add_quote:
-                                ids = self.llm.encode('"').squeeze().tolist()
-                                c = self.llm.decode(ids)
-                                text += f"{c}"
-                                add_quote = False
-                                input_ids.append(ids)
-
-                            logits = self.llm.get_logits_from_input_ids(
-                                input_ids)
-                            forbidden_ids = []
-                            x = self.llm.encode('"\n').squeeze().tolist()
-                            forbidden_ids.append(x)
-
-                            for for_id in forbidden_ids:
-                                logits[for_id] = float("-inf")
-
-                            id = np.argmax(logits)
-                            c = self.llm.decode([int(id)])
-                            d = f"{c}"
-                            text += d
-                            input_ids.append(id)
-                            if '"' in d:
-                                if final_param == parameters_count - 1:
-                                    if d[-1] != '}':
-                                        ids = self.llm.encode(
-                                            '} ').squeeze().tolist()
-                                        c = self.llm.decode(ids)
-                                        d = f"{c}"
-                                        text += d
-                                        input_ids.append(ids)
-                                else:
-                                    if d[-1] != ',':
-                                        ids = self.llm.encode(
-                                            ', ').squeeze().tolist()
-                                        c = self.llm.decode(ids)
-                                        d = f"{c}"
-                                        text += d
-                                        input_ids.append(ids)
-                                break
-
-                    final_param += 1
-                if final_param == parameters_count:
-                    text += "}"
-                    self.json_text += text
-                    try:
-                        obg = json.loads(text)
-                        if self.counter == 0:
-                            print('[')
-                        print(json.dumps(obg, indent=2), end="", flush=True)
-
-                    except json.JSONDecodeError:
-                        print(
-                            f"We have error in json formatplease"
-                            f"edit your prompt \n  {self.prompt} and try again"
-                        )
-                        exit(1)
-                    if self.counter != self.prompt_count - 1:
-                        print(",")
+                            if pos_char not in param_text[-1]:
+                                close_param = self.llm.encode(
+                                    pos_char).squeeze().tolist()
+                                print_param = self.llm.decode(close_param)
+                                text += f"{print_param}"
+                            break
+                        text += f"{c}"
                     else:
-                        print('\n]')
-                    text = ""
-
-                break
+                        if add_quote:
+                            ids = self.llm.encode('"').squeeze().tolist()
+                            c = self.llm.decode(ids)
+                            text += f"{c}"
+                            add_quote = False
+                            input_ids.append(ids)
+                        logits = self.llm.get_logits_from_input_ids(
+                            input_ids)
+                        forbidden_ids: List[int] = []
+                        forbidden_ids.append(self.llm.encode('"\n').squeeze().tolist())
+                        for for_id in forbidden_ids:
+                            logits[for_id] = float("-inf")
+                        id = np.argmax(logits)
+                        c = self.llm.decode([int(id)])
+                        d = f"{c}"
+                        text += d
+                        input_ids.append(id)
+                        if '"' in d:
+                            if final_param == parameters_count - 1:
+                                if d[-1] != '}':
+                                    ids = self.llm.encode(
+                                        '} ').squeeze().tolist()
+                                    c = self.llm.decode(ids)
+                                    d = f"{c}"
+                                    text += d
+                                    input_ids.append(ids)
+                            else:
+                                if d[-1] != ',':
+                                    ids = self.llm.encode(
+                                        ', ').squeeze().tolist()
+                                    c = self.llm.decode(ids)
+                                    d = f"{c}"
+                                    text += d
+                                    input_ids.append(ids)
+                            break
+                final_param += 1
+            if final_param == parameters_count:
+                text += "}"
+                self.json_text += text
+                try:
+                    obg = json.loads(text)
+                    if self.counter == 0:
+                        print('[')
+                    print(json.dumps(obg, indent=2), end="", flush=True)
+                except json.JSONDecodeError:
+                    print(
+                        f"We have error in json formatplease"
+                        f"edit your prompt \n  {self.prompt} and try again"
+                    )
+                    exit(1)
+                if self.counter != self.prompt_count - 1:
+                    print(",")
+                else:
+                    print('\n]')
+                text = ""
+            break
         return self.json_text
